@@ -16,10 +16,10 @@ class JsonType extends BaseType implements OptionalConvertInterface
      * @param \Cake\Database\DriverInterface $driver database driver
      * @return mixed|null|string|void
      */
-    public function toPHP($value, DriverInterface $driver)
+    public function toPHP($value, $driver): mixed
     {
         if ($value === null) {
-            return;
+            return null;
         }
 
         return json_decode($value, true);
@@ -31,7 +31,7 @@ class JsonType extends BaseType implements OptionalConvertInterface
      * @param mixed $value json string to decode
      * @return mixed|null|string
      */
-    public function marshal($value)
+    public function marshal($value): mixed
     {
         if (is_array($value) || $value === null) {
             return $value;
@@ -47,7 +47,7 @@ class JsonType extends BaseType implements OptionalConvertInterface
      * @param \Cake\Database\DriverInterface $driver database driver
      * @return null|string
      */
-    public function toDatabase($value, DriverInterface $driver): ?string
+    public function toDatabase($value, $driver): mixed
     {
         return json_encode($value);
     }

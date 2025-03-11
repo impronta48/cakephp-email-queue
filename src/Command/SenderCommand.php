@@ -1,17 +1,27 @@
 <?php
 declare(strict_types=1);
 
-namespace EmailQueue\Shell;
+//cakephp5
+// namespace EmailQueue\Shell;
+namespace EmailQueue\Command;
+
+//cakephp5
+// use Cake\Console\Shell;
+//cakephp5
+use Cake\Command\Command;
+use Cake\Console\Arguments;
+use Cake\Console\ConsoleIo;
 
 use Cake\Console\ConsoleOptionParser;
-use Cake\Console\Shell;
 use Cake\Core\Configure;
 use Cake\Mailer\Mailer;
 use Cake\Network\Exception\SocketException;
 use Cake\ORM\TableRegistry;
 use EmailQueue\Model\Table\EmailQueueTable;
 
-class SenderShell extends Shell
+// cakephp5
+// class SenderShell extends Shell
+class SenderCommand extends Command
 {
     /**
      * Gets the option parser instance and configures it.
@@ -31,7 +41,7 @@ class SenderShell extends Shell
                 [
                 'short' => 'l',
                 'help' => 'How many emails should be sent in this batch?',
-                'default' => 50,
+                'default' => '50',
                 ]
             )
             ->addOption(
@@ -65,13 +75,13 @@ class SenderShell extends Shell
                 'help' => 'Name of email settings to use as defined in email.php',
                 'default' => 'default',
                 ]
-            )
-            ->addSubCommand(
-                'clearLocks',
-                [
-                'help' => 'Clears all locked emails in the queue, useful for recovering from crashes',
-                ]
             );
+            // ->addSubcommand(
+            //     'clearLocks',
+            //     [
+            //     'help' => 'Clears all locked emails in the queue, useful for recovering from crashes',
+            //     ]
+            // );
 
         return $parser;
     }
@@ -81,21 +91,38 @@ class SenderShell extends Shell
      *
      * @return void
      */
-    public function main(): void
+    // cakephp5
+    //  public function main()
+    public function execute(Arguments $args, ConsoleIo $io): int
     {
-        if ($this->params['stagger']) {
-            sleep(rand(0, $this->params['stagger']));
+        //cakephp5
+        // if ($this->params['stagger']) {
+        //     sleep(rand(0, $this->params['stagger']));
+        // }
+        $stagger = (int)$args->getOption('stagger');
+        if ($stagger) {
+            sleep(rand(0, $stagger));
         }
 
         Configure::write('App.baseUrl', '/');
         $emailQueue = TableRegistry::getTableLocator()->get('EmailQueue', ['className' => EmailQueueTable::class]);
-        $emails = $emailQueue->getBatch($this->params['limit']);
+        //cakephp5
+        // $emails = $emailQueue->getBatch($this->params['limit']);
+        $limit = (int)$args->getOption('limit');
+        $emails = $emailQueue->getBatch($limit);
 
         $count = count($emails);
         foreach ($emails as $e) {
-            $configName = $e->config === 'default' ? $this->params['config'] : $e->config;
-            $template = $e->template === 'default' ? $this->params['template'] : $e->template;
-            $layout = $e->layout === 'default' ? $this->params['layout'] : $e->layout;
+            //cakephp5
+            // $configName = $e->config === 'default' ? $this->params['config'] : $e->config;
+            // $template = $e->template === 'default' ? $this->params['template'] : $e->template;
+            // $layout = $e->layout === 'default' ? $this->params['layout'] : $e->layout;
+            $config = $args->getOption('config');
+            $template = $args->getOption('template');
+            $layout = $args->getOption('layout');
+            $configName = $e->config === 'default' ? $config : $e->config;
+            $template = $e->template === 'default' ? $template : $e->template;
+            $layout = $e->layout === 'default' ? $layout : $e->layout;
             $headers = empty($e->headers) ? [] : (array)$e->headers;
             $theme = empty($e->theme) ? '' : (string)$e->theme;
             $viewVars = empty($e->template_vars) ? [] : $e->template_vars;
@@ -135,23 +162,32 @@ class SenderShell extends Shell
 
                 $email->deliver();
             } catch (SocketException $exception) {
-                $this->err($exception->getMessage());
+                //cakephp5
+                // $this->err($exception->getMessage());
+                $io->err($exception->getMessage());
                 $errorMessage = $exception->getMessage();
                 $sent = false;
             }
 
             if ($sent) {
                 $emailQueue->success($e->id);
-                $this->out('<success>Email ' . $e->id . ' was sent</success>');
+                //cakephp5
+                // $this->out('<success>Email ' . $e->id . ' was sent</success>');
+                $io->out('<success>Email ' . $e->id . ' was sent</success>');
             } else {
                 $emailQueue->fail($e->id, $errorMessage);
-                $this->out('<error>Email ' . $e->id . ' was not sent</error>');
+                //cakephp5
+                // $this->out('<error>Email ' . $e->id . ' was not sent</error>');
+                $io->out('<error>Email ' . $e->id . ' was not sent</error>');
             }
         }
+
         if ($count > 0) {
             $locks = collection($emails)->extract('id')->toList();
             $emailQueue->releaseLocks($locks);
         }
+
+        return static::CODE_SUCCESS;
     }
 
     /**

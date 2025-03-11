@@ -8,9 +8,9 @@ use Cake\Core\Configure;
 use Cake\Database\Expression\QueryExpression;
 use Cake\Database\Query;
 use Cake\Database\Schema\TableSchemaInterface;
-use Cake\Database\Type;
+// use Cake\Database\Type;
+use Cake\Database\TypeFactory;
 use Cake\I18n\FrozenTime;
-use Cake\ORM\Query as ORMQuery;
 use Cake\ORM\Table;
 use EmailQueue\Database\Type\JsonType;
 use EmailQueue\Database\Type\SerializeType;
@@ -28,8 +28,8 @@ class EmailQueueTable extends Table
    */
   public function initialize(array $config = []): void
   {
-    Type::map('email_queue.json', JsonType::class);
-    Type::map('email_queue.serialize', SerializeType::class);
+    TypeFactory::map('email_queue.json', JsonType::class);
+    TypeFactory::map('email_queue.serialize', SerializeType::class);
     $this->addBehavior(
       'Timestamp',
       [
@@ -41,6 +41,12 @@ class EmailQueueTable extends Table
         ],
       ]
     );
+
+    $type = Configure::read('EmailQueue.serialization_type') ?: 'email_queue.serialize';
+    $this->getSchema()->setColumnType('template_vars', $type);
+    $this->getSchema()->setColumnType('headers', $type);
+    $this->getSchema()->setColumnType('attachments', $type);
+
   }
 
   /**
@@ -69,7 +75,7 @@ class EmailQueueTable extends Table
 
     $defaults = [
       'subject' => '',
-      'send_at' => new FrozenTime('now'),
+      'send_at' => \Cake\I18n\DateTime::now(),
       'template' => 'default',
       'layout' => 'default',
       'theme' => '',
@@ -118,23 +124,22 @@ class EmailQueueTable extends Table
         ->where([
           $this->aliasField('sent') => false,
           $this->aliasField('send_tries') . ' <=' => 3,
-          $this->aliasField('send_at') . ' <=' => new FrozenTime('now'),
+          $this->aliasField('send_at') . ' <=' => \Cake\I18n\DateTime::now(),
           $this->aliasField('locked') => false,
         ])
         ->limit($size)
         ->order([$this->aliasField('created') => 'ASC']);
 
       $emails
-        ->extract('id')
-        ->through(function (\Cake\Collection\CollectionInterface $ids) {
+          ->func(function (\Cake\Collection\CollectionInterface $ids) {
           if (!$ids->isEmpty()) {
             $this->updateAll(['locked' => true], ['id IN' => $ids->toList()]);
           }
 
           return $ids;
         });
-
-      return $emails->toList();
+      
+      return $emails->toArray();
     });
   }
 
@@ -207,8 +212,7 @@ class EmailQueueTable extends Table
     return $schema;
   }
 
-
-  public function status($campaign_id = null): ORMQuery
+  public function status($campaign_id = null): Query
   {
     //Cerco nella mailqueue tutti i destinatari di quella campagna e il loro stato
     $query = $this->find()

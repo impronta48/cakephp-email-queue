@@ -16,7 +16,7 @@ class SerializeType extends BaseType implements OptionalConvertInterface
      * @param \Cake\Database\DriverInterface $driver database driver
      * @return mixed|null|string|void
      */
-    public function toPHP($value, DriverInterface $driver)
+    public function toPHP($value, $driver): mixed
     {
         if ($value === null) {
             return null;
@@ -32,7 +32,7 @@ class SerializeType extends BaseType implements OptionalConvertInterface
      * @param \Cake\Database\Driver $driver database driver
      * @return null|string
      */
-    public function toDatabase($value, DriverInterface $driver): ?string
+    public function toDatabase($value, $driver): mixed
     {
         if ($value === null || is_string($value)) {
             return $value;
@@ -51,7 +51,7 @@ class SerializeType extends BaseType implements OptionalConvertInterface
      * @param mixed $value php object
      * @return mixed|null|string
      */
-    public function marshal($value)
+    public function marshal($value): mixed
     {
         return $value;
     }
